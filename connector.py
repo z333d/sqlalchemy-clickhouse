@@ -50,6 +50,11 @@ class ParamEscaper(object):
             item = item.decode('utf-8')
         return "'{}'".format(item.replace("\\", "\\\\").replace("'", "\\'").replace("$", "$$"))
 
+    def escape_tuple(self, item):
+        return "[" + ", ".join(
+            [str(self.escape_item(x)) for x in item]
+        ) + "]"
+
     def escape_item(self, item):
         if item is None:
             return 'NULL'
@@ -57,6 +62,8 @@ class ParamEscaper(object):
             return self.escape_number(item)
         elif isinstance(item, basestring):
             return self.escape_string(item)
+        elif isinstance(item, tuple):
+            return self.escape_tuple(item)
         else:
             raise Exception("Unsupported object {}".format(item))
 
@@ -87,12 +94,12 @@ def create_ad_hoc_field(cls, db_type):
     if db_type.startswith('Nullable'):
         inner_field = cls.create_ad_hoc_field(db_type[9 : -1])
         return orm_fields.NullableField(inner_field)
-   
+
     # db_type for Deimal comes like 'Decimal(P, S) string where P is precision and S is scale'
     if db_type.startswith('Decimal'):
         nums = [int(n) for n in db_type[8:-1].split(',')]
         return orm_fields.DecimalField(nums[0], nums[1])
-    
+
     # Simple fields
     name = db_type + 'Field'
     if not hasattr(orm_fields, name):
